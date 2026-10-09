@@ -32,7 +32,9 @@
     - name: Get existing rhcos image from ICIC glance
       ansible.builtin.shell: |
         set -o pipefail
-        openstack image list --format value | grep -w 'icic_rhcos_{{ vm_type }}_{{ disk_type }}_{{ openshift_version }}_{{ openshift_minor_version }}_{{ icic_proj.stdout }}' | wc -l
+        openstack image list --format value | \
+          grep -w 'icic_rhcos_{{ vm_type }}_{{ disk_type }}_{{ openshift_version }}_{{ openshift_minor_version }}_{{ icic_proj.stdout }}' | \
+          wc -l
       args:
         executable: /bin/bash
       register: icic_rhcos_count
@@ -52,7 +54,9 @@
     - name: Get existing rhcos image from ICIC glance
       ansible.builtin.shell: |
         set -o pipefail
-        openstack image list --format value | grep -w 'icic_rhcos_{{ vm_type }}_{{ disk_type }}_{{ openshift_version }}_{{ openshift_minor_version }}_{{ icic_proj.stdout }}' | wc -l
+        openstack image list --format value | \
+          grep -w 'icic_rhcos_{{ vm_type }}_{{ disk_type }}_{{ openshift_version }}_{{ openshift_minor_version }}_{{ icic_proj.stdout }}' | \
+          wc -l
       args:
         executable: /bin/bash
       register: icic_rhcos_count

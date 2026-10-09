@@ -46,19 +46,21 @@
       when: master_exists_count.stdout | int > 0
 
     - name: Remove /etc/haproxy/haproxy.cfg info with masters
-      ansible.builtin.command:
-        cmd: "sed -i '/{{ item.split(' ')[0] }}/d' /etc/haproxy/haproxy.cfg"
+      ansible.builtin.lineinfile:
+        path: /etc/haproxy/haproxy.cfg
+        regexp: "{{ item.split(' ')[0] }}"
+        state: absent
       with_items: "{{ master_ln.stdout_lines }}"
-      changed_when: false
       when:
         - master_exists_count.stdout | int > 0
         - use_internal_bastion is true
 
     - name: Remove bastion dns info with masters
-      ansible.builtin.command:
-        cmd: "sed -i '/{{ item.split(' ')[0] }}/d' /var/named/{{ cluster_domain_name }}.zone"
+      ansible.builtin.lineinfile:
+        path: "/var/named/{{ cluster_domain_name }}.zone"
+        regexp: "{{ item.split(' ')[0] }}"
+        state: absent
       with_items: "{{ master_ln.stdout_lines }}"
-      changed_when: false
       when:
         - master_exists_count.stdout | int > 0
         - use_internal_bastion is true
@@ -86,19 +88,21 @@
       when: worker_exist_count.stdout | int > 0
 
     - name: Remove /etc/haproxy/haproxy.cfg info with workers
-      ansible.builtin.command:
-        cmd: "sed -i '/{{ item.split(' ')[0] }}/d' /etc/haproxy/haproxy.cfg"
+      ansible.builtin.lineinfile:
+        path: /etc/haproxy/haproxy.cfg
+        regexp: "{{ item.split(' ')[0] }}"
+        state: absent
       with_items: "{{ worker_ln.stdout_lines }}"
-      changed_when: false
       when:
         - worker_exist_count.stdout | int > 0
         - use_internal_bastion is true
 
     - name: Remove bastion dns info with workers
-      ansible.builtin.command:
-        cmd: "sed -i '/{{ item.split(' ')[0] }}/d' /var/named/{{ cluster_domain_name }}.zone"
+      ansible.builtin.lineinfile:
+        path: "/var/named/{{ cluster_domain_name }}.zone"
+        regexp: "{{ item.split(' ')[0] }}"
+        state: absent
       with_items: "{{ worker_ln.stdout_lines }}"
-      changed_when: false
       when:
         - worker_exist_count.stdout | int > 0
         - use_internal_bastion is true

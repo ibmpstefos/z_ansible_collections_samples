@@ -47,7 +47,10 @@
 
     - name: 'Get compute servers from ICIC command line'
       ansible.builtin.shell: |
+        set -o pipefail
         openstack server list -c Name -f value | awk '/{{ os_compute_server_name }}/'
+      args:
+        executable: /bin/bash
       register: computes
       failed_when: false
       changed_when: false
