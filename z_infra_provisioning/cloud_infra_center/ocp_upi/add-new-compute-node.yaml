@@ -272,4 +272,3 @@
       with_items: "{{ hostvars['localhost']['workers_list'] }}"
       when:
         - use_internal_bastion is true
-
