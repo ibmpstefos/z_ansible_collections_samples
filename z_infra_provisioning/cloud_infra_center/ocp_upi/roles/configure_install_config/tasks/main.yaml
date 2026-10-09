@@ -32,42 +32,81 @@
   args:
     executable: python3
 
-- name: Add http proxy and https proxy in install-config.yaml
-  ansible.builtin.shell:
-    cmd: |
-      sed -i '/baseDomain/a proxy:' install-config.yaml
-      sed -i '/proxy/a \ \ httpProxy: {{ http_proxy }}' install-config.yaml
-      sed -i '/httpProxy/a \ \ httpsProxy: {{ https_proxy }}' install-config.yaml
-      sed -i '/httpsProxy/a \ \ noProxy: {{ no_proxy }}' install-config.yaml
-  changed_when: false
-  when:
-    - use_proxy
+- name: Add proxy section after baseDomain in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'baseDomain'
+    line: 'proxy:'
+  when: use_proxy
 
-- name: Add local registry info in install-config.yaml
-  ansible.builtin.shell:
-    cmd: |
-      sed -i '/baseDomain/a imageContentSources:' install-config.yaml
-      sed -i '/imageContentSources/a - mirrors:\n\ \ - {{ localreg_mirror }}\n\ \ source: quay.io/openshift-release-dev/ocp-v4.0-art-dev ' install-config.yaml
-      sed -i '/imageContentSources/a - mirrors:\n\ \ - {{ localreg_mirror }}\n\ \ source: quay.io/openshift-release-dev/ocp-release ' install-config.yaml
-  changed_when: false
-  when:
-    - use_localreg
+- name: Add httpProxy in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'proxy:'
+    line: "  httpProxy: {{ http_proxy }}"
+  when: use_proxy
 
-- name: Update networkType from OpenShiftSDN to OVNKubernetes
-  ansible.builtin.shell:
-    cmd: |
-      sed -i '/networkType/d' install-config.yaml
-  changed_when: false
+- name: Add httpsProxy in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'httpProxy:'
+    line: "  httpsProxy: {{ https_proxy }}"
+  when: use_proxy
+
+- name: Add noProxy in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'httpsProxy:'
+    line: "  noProxy: {{ no_proxy }}"
+  when: use_proxy
+
+- name: Add imageContentSources header in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'baseDomain'
+    line: 'imageContentSources:'
+  when: use_localreg
+
+- name: Add ocp-release mirror in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'imageContentSources:'
+    line: "- mirrors:\n  - {{ localreg_mirror }}\n  source: quay.io/openshift-release-dev/ocp-release"
+  when: use_localreg
+
+- name: Add ocp-v4.0-art-dev mirror in install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    insertafter: 'imageContentSources:'
+    line: "- mirrors:\n  - {{ localreg_mirror }}\n  source: quay.io/openshift-release-dev/ocp-v4.0-art-dev"
+  when: use_localreg
+
+- name: Remove networkType line from install-config.yaml
+  ansible.builtin.lineinfile:
+    path: install-config.yaml
+    regexp: 'networkType'
+    state: absent
   when:
     - openshift_version is version('4.12', '>=')
 
-- name: Update cluster domain name in install-config.yaml
-  ansible.builtin.shell:
-    cmd: |
-      sed -i "s/cluster_basedomain/{{ base_domain }}/g" install-config.yaml
-      sed -i "s/cluster_name/{{ cluster_name }}/g" install-config.yaml
-      cp -r install-config.yaml .install-config.yaml
-  changed_when: false
+- name: Update cluster base domain in install-config.yaml
+  ansible.builtin.replace:
+    path: install-config.yaml
+    regexp: 'cluster_basedomain'
+    replace: "{{ base_domain }}"
+
+- name: Update cluster name in install-config.yaml
+  ansible.builtin.replace:
+    path: install-config.yaml
+    regexp: 'cluster_name'
+    replace: "{{ cluster_name }}"
+
+- name: Backup install-config.yaml
+  ansible.builtin.copy:
+    src: install-config.yaml
+    dest: .install-config.yaml
+    mode: '0644'
+    remote_src: true
 
 - name: Empty compute server pools
   ansible.builtin.script: tools/empty-compute-node.py

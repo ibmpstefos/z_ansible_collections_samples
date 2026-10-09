@@ -67,18 +67,11 @@
     url: "{{ openshift_client_url }}/openshift-install-linux.tar.gz"
     dest: "{{ openshift_install_dir }}/openshift-install-linux.tar.gz"
     mode: '0755'
-  register: openshift_install_download_results
+  notify: Unzip openshift installer
   when:
     - not openshift_local_tar_results.stat.exists or
       (openshift_local_tar_results.stat.checksum is defined and
       openshift_local_tar_results.stat.checksum not in openshift_install_checksum_results.content | b64decode)
-
-- name: Unzip openshift installer
-  ansible.builtin.unarchive:
-    src: "{{ openshift_install_dir }}/openshift-install-linux.tar.gz"
-    dest: "{{ openshift_install_dir }}"
-    remote_src: true
-  when: openshift_install_download_results.changed
 
 - name: Download openshift client
   ansible.builtin.get_url:
@@ -88,18 +81,11 @@
       }}-rhel{{ ansible_distribution_major_version }}.tar.gz
     dest: "{{ openshift_install_dir }}/openshift-client-linux.tar.gz"
     mode: '0755'
-  register: openshift_client_download_results
+  notify: Unzip openshift client
   when:
     - not openshift_client_local_tar_results.stat.exists or
       (openshift_client_local_tar_results.stat.checksum is defined and
       openshift_client_local_tar_results.stat.checksum not in openshift_install_checksum_results.content | b64decode)
-
-- name: Unzip openshift client
-  ansible.builtin.unarchive:
-    src: "{{ openshift_install_dir }}/openshift-client-linux.tar.gz"
-    dest: "{{ openshift_install_dir }}"
-    remote_src: true
-  when: openshift_client_download_results.changed
 
 - name: Remove openshift install archive
   ansible.builtin.file:

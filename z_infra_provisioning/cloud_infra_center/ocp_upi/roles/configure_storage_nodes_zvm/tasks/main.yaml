@@ -77,6 +77,7 @@
   ansible.builtin.command:
     cmd: "openstack flavor show {{ os_flavor_storage }} -c disk -f value"
   register: storage_flavor_size
+  changed_when: false
   when:
     - disk_type == "scsi"
 
