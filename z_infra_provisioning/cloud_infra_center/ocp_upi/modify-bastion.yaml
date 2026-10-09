@@ -41,12 +41,13 @@
   when: new_worker_exists.stdout | int == 0
 
 - name: Add new worker dns record into named
-  ansible.builtin.shell:
-    cmd: "sed -i '{{ last_worker_ln.stdout }} a{{ new_worker_name }}              IN A {{ new_worker_ip }}\n' /var/named/{{ cluster_domain_name }}.zone"
+  ansible.builtin.lineinfile:
+    path: "/var/named/{{ cluster_domain_name }}.zone"
+    line: "{{ new_worker_name }}              IN A {{ new_worker_ip }}"
+    insertafter: "worker"
   when:
     - new_worker_exists.stdout | int == 0
     - last_worker_ln.stdout != ""
-  changed_when: false
 
 # modify haproxy file
 - name: 'Validation worker name exist in haproxy'
@@ -87,20 +88,18 @@
     new_worker_https: "{{ exist_new_worker_https.stdout | int + 3 }}"
 
 - name: Add new worker http domain into dns
-  ansible.builtin.command:
-    cmd: >-
-      sed -i '{{ new_worker_http }} i\         \server {{ new_worker_name }}
-      {{ new_worker_name }}.{{ cluster_domain_name }}:80 check' /etc/haproxy/haproxy.cfg
+  ansible.builtin.lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    line: "         server {{ new_worker_name }} {{ new_worker_name }}.{{ cluster_domain_name }}:80 check"
+    insertafter: "backend ocp4-router-http"
   when: new_worker_count.stdout == "0"
-  changed_when: false
 
 - name: Add new worker https domain into dns
-  ansible.builtin.command:
-    cmd: >-
-      sed -i '{{ new_worker_https }} i\         \server {{ new_worker_name }}
-      {{ new_worker_name }}.{{ cluster_domain_name }}:443 check' /etc/haproxy/haproxy.cfg
+  ansible.builtin.lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    line: "         server {{ new_worker_name }} {{ new_worker_name }}.{{ cluster_domain_name }}:443 check"
+    insertafter: "backend ocp4-router-https"
   when: new_worker_count.stdout == "0"
-  changed_when: false
 
 - name: Restart named-chroot.service
   ansible.builtin.service:

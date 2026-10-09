@@ -50,7 +50,10 @@
 
     - name: 'Get controller volumes from ICIC command line'
       ansible.builtin.shell: |
+        set -o pipefail
         openstack --os-volume-api-version=3 volume list -c Name -f value | grep {{ infra_id.stdout_lines[0] }} | grep master | cut -d '-' -f 1-3
+      args:
+        executable: /bin/bash
       register: controller_vols
       failed_when: false
       changed_when: false
@@ -67,7 +70,10 @@
 
     - name: 'Get compute volumes from ICIC command line'
       ansible.builtin.shell: |
+        set -o pipefail
         openstack --os-volume-api-version=3 volume list -c Name -f value | grep {{ infra_id.stdout_lines[0] }} | grep worker | cut -d '-' -f 1-3
+      args:
+        executable: /bin/bash
       register: compute_vols
       failed_when: false
       changed_when: false
@@ -84,7 +90,10 @@
 
     - name: 'Get storage volumes from ICIC command line'
       ansible.builtin.shell: |
+        set -o pipefail
         openstack --os-volume-api-version=3 volume list -c Name -f value | grep {{ infra_id.stdout_lines[0] }} | grep storage | cut -d '-' -f 1-3
+      args:
+        executable: /bin/bash
       register: storage_vols
       failed_when: false
       changed_when: false
@@ -101,7 +110,10 @@
 
     - name: 'Get infra volumes from ICIC command line'
       ansible.builtin.shell: |
+        set -o pipefail
         openstack --os-volume-api-version=3 volume list -c Name -f value | grep {{ infra_id.stdout_lines[0] }} | grep infra | cut -d '-' -f 1-3
+      args:
+        executable: /bin/bash
       register: infra_vols
       failed_when: false
       changed_when: false

@@ -68,4 +68,3 @@
       loop: "{{ compute_index }}"
       changed_when: false
       when: compute_index is defined
-      
