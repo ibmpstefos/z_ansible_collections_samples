@@ -14,15 +14,16 @@
   ansible.builtin.include_tasks: "../../../common.yaml"
 
 - name: Get icic project name
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: openstack configuration show -c auth.project_name -f value
   register: icic_proj
+  changed_when: false
 
-- name: Check if {{ local_rhcos_image }} is a URL
+- name: Check if local rhcos image is a URL
   ansible.builtin.set_fact:
     is_url: "{{ local_rhcos_image.startswith('https://') }}"
 
-- name: Download and uncompress the RHCOS image if {{ local_rhcos_image }} is a URL
+- name: Download and uncompress RHCOS image from URL
   ansible.builtin.shell: |
     if [ -f "rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.raw" ]; then
       rm -f "rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.raw"
@@ -30,12 +31,13 @@
     curl -Lf {{ local_rhcos_image }} > rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.raw.gz
     gunzip -f rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.raw.gz
   register: download_uncompress_result
-  ignore_errors: true
+  failed_when: false
+  changed_when: false
   when:
     - vm_type == "zvm"
     - is_url
 
-- name: Fail if download or uncompress fails if {{ local_rhcos_image }} is a URL
+- name: Fail if download or uncompress from URL fails
   ansible.builtin.fail:
     msg: "Failed to download or uncompress the file from the URL: {{ local_rhcos_image }}"
   when:
@@ -43,16 +45,17 @@
     - vm_type == "zvm"
     - download_uncompress_result.rc != 0
 
-- name: Download and uncompress the RHCOS image if {{ local_rhcos_image }} is a file path
+- name: Download and uncompress RHCOS image from file path
   ansible.builtin.shell: |
      gunzip -c "{{ local_rhcos_image }}" > "rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.raw"
   register: copy_uncompress_result
-  ignore_errors: true
+  failed_when: false
+  changed_when: false
   when:
     - vm_type == "zvm"
     - not is_url
 
-- name: Fail if copy or uncompress fails if {{ local_rhcos_image }} is a file path
+- name: Fail if copy or uncompress from file path fails
   ansible.builtin.fail:
     msg: "Failed to copy or uncompress the file from the path: {{ local_rhcos_image }}. Error: {{ copy_uncompress_result.stderr }}"
   when:
@@ -60,7 +63,7 @@
     - vm_type == "zvm"
     - copy_uncompress_result.rc != 0
 
-- name: Download and uncompress the RHCOS image if {{ local_rhcos_image }} is a URL
+- name: Download and uncompress RHCOS qcow2 image from URL
   ansible.builtin.shell: |
     if [ -f "rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.qcow2" ]; then
       rm -f "rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.qcow2"
@@ -68,12 +71,13 @@
     curl -Lf {{ local_rhcos_image }} > rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.qcow2.gz
     gunzip -f rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.qcow2.gz
   register: download_uncompress_result
-  ignore_errors: true
+  failed_when: false
+  changed_when: false
   when:
     - vm_type == "kvm"
     - is_url
 
-- name: Fail if download or uncompress fails if {{ local_rhcos_image }} is a URL
+- name: Fail if download or uncompress from URL fails on KVM
   ansible.builtin.fail:
     msg: "Failed to download or uncompress the file from the URL: {{ local_rhcos_image }}"
   when:
@@ -81,16 +85,17 @@
     - vm_type == "kvm"
     - download_uncompress_result.rc != 0
 
-- name: Download and uncompress the RHCOS image if {{ local_rhcos_image }} is a file path
+- name: Download and uncompress RHCOS image from file path on KVM
   ansible.builtin.shell: |
      gunzip -c "{{ local_rhcos_image }}" > "rhcos-{{ openshift_version }}.{{ openshift_minor_version }}-s390x.qcow2"
   register: copy_uncompress_result
-  ignore_errors: true
+  failed_when: false
+  changed_when: false
   when:
     - vm_type == "kvm"
     - not is_url
 
-- name: Fail if copy or uncompress fails if {{ local_rhcos_image }} is a file path
+- name: Fail if copy or uncompress from file path fails on KVM
   ansible.builtin.fail:
     msg: "Failed to copy or uncompress the file from the path: {{ local_rhcos_image }}. Error: {{ copy_uncompress_result.stderr }}"
   when:

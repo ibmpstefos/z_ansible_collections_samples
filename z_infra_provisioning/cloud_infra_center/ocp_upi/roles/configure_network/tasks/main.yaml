@@ -41,11 +41,14 @@
   ansible.builtin.command:
     cmd: "openstack subnet show {{ use_network_subnet }} -c cidr -f value"
   register: subnet_range
+  changed_when: false
 
-- local_action:
-    module: ansible.builtin.copy
-    content: "{{ subnet_range.stdout_lines[0]}}"
+- name: Save subnet range to file
+  ansible.builtin.copy:
+    content: "{{ subnet_range.stdout_lines[0] }}"
     dest: ".subnet_range.yml"
+    mode: '0644'
+  delegate_to: localhost
 
 - name: 'Check netowrk name is properly set'
   ansible.builtin.fail:
@@ -61,16 +64,25 @@
   ansible.builtin.command:
     cmd: "openstack subnet show {{ use_network_subnet }} -c id -f value"
   register: subnet_id
+  changed_when: false
 
 - name: "Get first start of allocation pool of subnet {{ use_network_subnet }}"
   ansible.builtin.shell: |
-     openstack subnet show {{ use_network_subnet }} -c allocation_pools -f json | grep start | awk -F ':' '{print$2}'|tr -d '",'
+    set -o pipefail
+    openstack subnet show {{ use_network_subnet }} -c allocation_pools -f json | grep start | awk -F ':' '{print$2}' | tr -d '",'
+  args:
+    executable: /bin/bash
   register: default_allocation_pool_start
+  changed_when: false
 
 - name: "Get first end of allocation pool of subnet {{ use_network_subnet }}"
   ansible.builtin.shell: |
-     openstack subnet show {{ use_network_subnet }} -c allocation_pools -f json | grep end | awk -F ':' '{print$2}'|tr -d '",'
+    set -o pipefail
+    openstack subnet show {{ use_network_subnet }} -c allocation_pools -f json | grep end | awk -F ':' '{print$2}' | tr -d '",'
+  args:
+    executable: /bin/bash
   register: default_allocation_pool_end
+  changed_when: false
 
 - name: 'Update allocation pool of subnet {{ use_network_subnet }}'
   ansible.builtin.command:
@@ -78,23 +90,30 @@
   when:
     - allocation_pool_start is defined
     - allocation_pool_end is defined
+  changed_when: false
 
 - name: 'Update partial allocation pool of subnet {{ use_network_subnet }}'
   ansible.builtin.command:
-    cmd: "openstack subnet set --allocation-pool start={{ allocation_pool_start | default(subnet_range.stdout_lines[0] | next_nth_usable(10)) }},end={{ allocation_pool_end | default(os_subnet_range | ipaddr('last_usable')) }} {{ use_network_subnet }}"
+    cmd: >-
+      openstack subnet set --allocation-pool
+      start={{ allocation_pool_start | default(subnet_range.stdout_lines[0] | next_nth_usable(10)) }},end={{ allocation_pool_end | default(os_subnet_range | ipaddr('last_usable')) }}
+      {{ use_network_subnet }}
   when:
     - (allocation_pool_start is not defined and allocation_pool_end is defined) or
       (allocation_pool_start is defined and allocation_pool_end is not defined)
+  changed_when: false
 
 - name: 'Export infra ID'
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: "jq -r .infraID metadata.json"
   register: infra_id
+  changed_when: false
 
 - name: 'Generate random string for the compute server ports and store them in a json file'
   ansible.builtin.script: tools/generate-random-compute-json.py {{ infra_id.stdout_lines[0] }} {{ os_compute_nodes_number }}
   args:
     executable: python3
+  changed_when: false
 
 - name: 'Create the bootstrap server port'
   openstack.cloud.port:
@@ -212,23 +231,28 @@
 - name: 'Set bootstrap port tag'
   ansible.builtin.command:
     cmd: "openstack port set --tag {{ cluster_id_tag }} {{ os_port_bootstrap }}"
+  changed_when: false
 
 - name: 'Set control server ports tag'
   ansible.builtin.command:
     cmd: "openstack port set --tag {{ cluster_id_tag }} {{ item.1 }}-{{ item.0 }}"
   with_indexed_items: "{{ [os_port_master] * os_control_nodes_number }}"
+  changed_when: false
 
 - name: 'Set compute server ports tag'
   ansible.builtin.command:
     cmd: "openstack port set --tag {{ cluster_id_tag }} {{ item.1 }}-{{ item.0 }}"
   with_indexed_items: "{{ [os_port_worker] * os_compute_nodes_number }}"
+  changed_when: false
 
 - name: 'Set storage server ports tag'
   ansible.builtin.command:
     cmd: "openstack port set --tag {{ cluster_id_tag }} {{ item.1 }}-{{ item.0 }}"
   with_indexed_items: "{{ [os_port_storage] * os_storage_nodes_number }}"
+  changed_when: false
 
 - name: 'Set infra server ports tag'
   ansible.builtin.command:
     cmd: "openstack port set --tag {{ cluster_id_tag }} {{ item.1 }}-{{ item.0 }}"
   with_indexed_items: "{{ [os_port_infra] * os_infra_nodes_number }}"
+  changed_when: false

@@ -18,6 +18,7 @@
         curl -Lf {{ local_openshift_install }} > openshift-install-linux.tar.gz
         tar -zvxf ./openshift-install-linux.tar.gz
     fi
+  changed_when: false
 
 - name: Download openshift client
   ansible.builtin.shell: |
@@ -27,3 +28,4 @@
         curl -Lf {{ local_openshift_client }} > openshift-client-linux.tar.gz
         tar -zxvf ./openshift-client-linux.tar.gz
     fi
+  changed_when: false

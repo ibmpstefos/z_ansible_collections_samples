@@ -38,7 +38,7 @@
 
 - name: Get the subnet range from localhost
   ansible.builtin.set_fact:
-    subnet_range: "{{ lookup('file', '.subnet_range.yml') }}"
+    subnet_range: "{{ lookup('file', '.subnet_range.yml', errors='ignore') | default('', true) }}"
 
 - name: Set_fact for the the subnet range
   ansible.builtin.set_fact:
@@ -49,14 +49,16 @@
     netmask_result: "{{ subnet_range | ipaddr('netmask') }}"
 
 - name: Update cluster_subnet_range
-  ansible.builtin.command:
-    cmd: sed -i "s|dhcp_subnet| {{ cluster_subnet_range }} |g" /etc/dhcp/dhcpd.conf
-  changed_when: false
+  ansible.builtin.replace:
+    path: /etc/dhcp/dhcpd.conf
+    regexp: "dhcp_subnet"
+    replace: " {{ cluster_subnet_range }} "
 
 - name: Update cic_subnet_mask
-  ansible.builtin.command:
-    cmd: sed -i "s|cic_subnet_mask|{{ netmask_result }}|g" /etc/dhcp/dhcpd.conf
-  changed_when: false
+  ansible.builtin.replace:
+    path: /etc/dhcp/dhcpd.conf
+    regexp: "cic_subnet_mask"
+    replace: "{{ netmask_result }}"
 
 - name: Restart dhcpd
   ansible.builtin.service:

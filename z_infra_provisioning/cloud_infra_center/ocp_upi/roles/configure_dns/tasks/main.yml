@@ -42,7 +42,7 @@
 
 - name: Get the subnet range from localhost
   ansible.builtin.set_fact:
-    subnet_range: "{{ lookup('file', '.subnet_range.yml') }}"
+    subnet_range: "{{ lookup('file', '.subnet_range.yml', errors='ignore') | default('', true) }}"
 
 - name: Create dns subnet definition
   become: true
@@ -119,9 +119,10 @@
   become: true
   become_user: root
   become_method: ansible.builtin.sudo
-  ansible.builtin.command:
-    cmd: sed -i "s|cluster_subnet_range|{{ subnet_range }}|g" /etc/named.conf
-  changed_when: false
+  ansible.builtin.replace:
+    path: /etc/named.conf
+    regexp: "cluster_subnet_range"
+    replace: "{{ subnet_range }}"
   notify:
     - restart dns
 
@@ -129,9 +130,10 @@
   become: true
   become_user: root
   become_method: ansible.builtin.sudo
-  ansible.builtin.command:
-    cmd: sed -i "s/bastion_subnet_prefix_reverse/{{ bastion_reverse }}/g" /etc/named.conf
-  changed_when: false
+  ansible.builtin.replace:
+    path: /etc/named.conf
+    regexp: "bastion_subnet_prefix_reverse"
+    replace: "{{ bastion_reverse }}"
   notify:
     - restart dns
 

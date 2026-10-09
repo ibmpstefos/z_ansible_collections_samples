@@ -24,7 +24,7 @@
             executable: /bin/bash
           register: csr_worker
           changed_when: false
-          until: csr_worker.stdout | int == {{ os_compute_nodes_number | int + os_storage_nodes_number | int + os_infra_nodes_number | int }}
+          until: csr_worker.stdout | int == (os_compute_nodes_number | int + os_storage_nodes_number | int + os_infra_nodes_number | int)
           retries: 60
           delay: 10
       rescue:
