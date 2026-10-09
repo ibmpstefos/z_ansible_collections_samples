@@ -16,7 +16,8 @@
 
 ---
 # tasks file for configure-dhcp
-- ansible.builtin.include_vars: dhcp_template.yaml
+- name: Include DHCP template variables
+  ansible.builtin.include_vars: dhcp_template.yaml
 
 - name: 'Remove the /etc/dhcp/dhcpd.conf'
   ansible.builtin.file:
@@ -24,15 +25,16 @@
     path: /etc/dhcp/dhcpd.conf
 
 - name: Install DHCP server package
-  package:
+  ansible.builtin.package:
     name: dhcp-server.s390x
     state: present
   become: true
 
 - name: Configure dhcpd.conf file
-  template:
+  ansible.builtin.template:
     src: etc/dhcp/dhcpd.conf.j2
     dest: /etc/dhcp/dhcpd.conf
+    mode: '0644'
 
 - name: Get the subnet range from localhost
   ansible.builtin.set_fact:
@@ -47,14 +49,16 @@
     netmask_result: "{{ subnet_range | ipaddr('netmask') }}"
 
 - name: Update cluster_subnet_range
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: sed -i "s|dhcp_subnet| {{ cluster_subnet_range }} |g" /etc/dhcp/dhcpd.conf
+  changed_when: false
 
 - name: Update cic_subnet_mask
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: sed -i "s|cic_subnet_mask|{{ netmask_result }}|g" /etc/dhcp/dhcpd.conf
+  changed_when: false
 
-- name: restart dhcpd
-  service:
+- name: Restart dhcpd
+  ansible.builtin.service:
     name: dhcpd
     state: restarted

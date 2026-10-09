@@ -16,7 +16,8 @@
 
 ---
 # tasks file for configure-dns
-- ansible.builtin.include_vars: cluster-template.yaml
+- name: Include cluster template variables
+  ansible.builtin.include_vars: cluster-template.yaml
 
 - name: Install bind-chroot for dns
   become: true
@@ -24,7 +25,7 @@
   become_method: ansible.builtin.sudo
   ansible.builtin.yum:
     name: bind-chroot
-    state: latest
+    state: present
 
 - name: Create /var/named directory
   become: true
@@ -33,6 +34,7 @@
   ansible.builtin.file:
     path: /var/named
     state: directory
+    mode: '0755'
 
 - name: Combine cluster name and base domain
   ansible.builtin.set_fact:
@@ -51,6 +53,7 @@
     dest: /var/named/{{ cluster_domain_name }}.zone
     owner: named
     group: named
+    mode: '0644'
   notify:
     - restart dns
 
@@ -70,6 +73,7 @@
   become_method: ansible.builtin.sudo
   ansible.builtin.shell: grep -c "^{{ cluster_domain_name }}" /etc/resolv.conf || true
   register: check
+  changed_when: false
 
 - name: Use local dns in resolv.conf
   become: true
@@ -85,7 +89,7 @@
 
 - name: Reverse the order of the decimals in the specified bastion subnet
   ansible.builtin.set_fact:
-    bastion_reverse: "{{ os_dns_domain.split('.')[:-1][::-1]|join('.') }}"
+    bastion_reverse: "{{ os_dns_domain.split('.')[:-1][::-1] | join('.') }}"
 
 - name: Create dns subnet zone for bastion
   become: true
@@ -96,6 +100,7 @@
     dest: /var/named/{{ bastion_reverse }}.in-addr.arpa.zone
     owner: named
     group: named
+    mode: '0644'
   notify:
     - restart dns
 
@@ -106,6 +111,7 @@
   ansible.builtin.template:
     src: etc/named.conf.j2
     dest: /etc/named.conf
+    mode: '0644'
   notify:
     - restart dns
 
@@ -113,8 +119,9 @@
   become: true
   become_user: root
   become_method: ansible.builtin.sudo
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: sed -i "s|cluster_subnet_range|{{ subnet_range }}|g" /etc/named.conf
+  changed_when: false
   notify:
     - restart dns
 
@@ -122,8 +129,9 @@
   become: true
   become_user: root
   become_method: ansible.builtin.sudo
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: sed -i "s/bastion_subnet_prefix_reverse/{{ bastion_reverse }}/g" /etc/named.conf
+  changed_when: false
   notify:
     - restart dns
 

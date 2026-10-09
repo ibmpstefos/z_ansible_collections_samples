@@ -39,14 +39,16 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/common.yaml"
 
 - name: Export infra ID
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: "jq -r .infraID metadata.json"
   register: infra_id
+  changed_when: false
 
 - name: Get icic project name
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: openstack configuration show -c auth.project_name -f value
   register: icic_proj
+  changed_when: false
 
 - name: 'Get image name for kvm'
   ansible.builtin.set_fact:
@@ -61,7 +63,7 @@
     flavor: "{{ os_flavor_worker }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     userdata: "{{ lookup('file', [item.1, item.0, 'ignition.json'] | join('-')) | string }}"
     nics:
       - port-name: "{{ os_port_worker }}-{{ item.0 }}"
@@ -71,32 +73,33 @@
     - vm_type == "kvm"
     - volume_type_id is not defined
 
-
 - name: 'Convert compute node flavor from value into number'
   ansible.builtin.command:
     cmd: "openstack flavor show {{ os_flavor_worker }} -c disk -f value"
   register: compute_flavor_size
+  changed_when: false
   when:
     - disk_type == "scsi"
-
 
 - name: 'Create compute boot volume'
   openstack.cloud.volume:
     state: present
     name: "{{ item.1 }}-{{ item.0 }}-boot"
     image: "{{ image_name }}"
-    size: "{{ compute_flavor_size.stdout_lines[0]}}"
+    size: "{{ compute_flavor_size.stdout_lines[0] }}"
     volume_type: "{{ volume_type_id }}"
     metadata: "{{ cluster_id_tag }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
   with_indexed_items: "{{ [os_compute_server_name] * os_compute_nodes_number }}"
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
 
 - name: 'Set compute volume bootable'
-  ansible.builtin.shell: openstack --os-volume-api-version=3 volume set --bootable "{{ item.1 }}-{{ item.0 }}-boot"
+  ansible.builtin.command:
+    cmd: openstack --os-volume-api-version=3 volume set --bootable "{{ item.1 }}-{{ item.0 }}-boot"
   with_indexed_items: "{{ [os_compute_server_name] * os_compute_nodes_number }}"
+  changed_when: false
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
@@ -108,7 +111,7 @@
     boot_volume: "{{ item.1 }}-{{ item.0 }}-boot"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     userdata: "{{ lookup('file', [item.1, item.0, 'ignition.json'] | join('-')) | string }}"
     nics:
       - port-name: "{{ os_port_worker }}-{{ item.0 }}"

@@ -17,7 +17,8 @@
 ---
 # tasks file for configure-haproxy
 
-- ansible.builtin.include_vars: cluster-template.yaml
+- name: Include cluster template variables
+  ansible.builtin.include_vars: cluster-template.yaml
 
 - name: Install haproxy
   become: true
@@ -28,7 +29,7 @@
       - haproxy
       # - libsemanage-python
       - python3-libsemanage
-    state: latest
+    state: present
   notify:
     - restart haproxy
     - restart firewalld
@@ -40,6 +41,7 @@
   ansible.builtin.file:
     path: /etc/haproxy
     state: directory
+    mode: '0755'
 
 - name: Create /etc/haproxy/haproxy.cfg
   become: true
@@ -48,6 +50,7 @@
   ansible.builtin.template:
     src: etc/haproxy/haproxy.cfg.j2
     dest: /etc/haproxy/haproxy.cfg
+    mode: '0644'
   notify:
     - restart haproxy
 
@@ -148,7 +151,8 @@
   become: true
   become_user: root
   become_method: ansible.builtin.sudo
-  ansible.builtin.shell: setsebool -P haproxy_connect_any=1
+  ansible.builtin.command: setsebool -P haproxy_connect_any=1
+  changed_when: false
 
 # - name: start haproxy
 #   become: yes

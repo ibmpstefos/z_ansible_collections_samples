@@ -39,9 +39,10 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/common.yaml"
 
 - name: Get icic project name
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: openstack configuration show -c auth.project_name -f value
   register: icic_proj
+  changed_when: false
 
 - name: 'Get image name for ZVM'
   ansible.builtin.set_fact:
@@ -54,6 +55,7 @@
     # os-compute-api-version 2.15 or higher is required for the 'soft-anti-affinity' policy
     cmd: "openstack --os-compute-api-version=2.15 server group list -f json -c ID -c Name"
   register: server_group_list
+  changed_when: false
 
 - name: 'Parse the server group ID from existing'
   ansible.builtin.set_fact:
@@ -61,13 +63,14 @@
   vars:
     list_query: "[?Name=='{{ os_cp_server_group_name }}']"
   when:
-    - "os_cp_server_group_name|string in server_group_list.stdout"
+    - "os_cp_server_group_name | string in server_group_list.stdout"
 
 - name: 'Create the control server group'
   ansible.builtin.command:
     # os-compute-api-version 2.15 or higher is required for the 'soft-anti-affinity' policy
     cmd: "openstack --os-compute-api-version=2.15 server group create -f json -c id --policy=soft-anti-affinity {{ os_cp_server_group_name }}"
   register: server_group_created
+  changed_when: false
   when:
     - server_group_id is not defined
 
@@ -84,7 +87,7 @@
     flavor: "{{ os_flavor_master }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     # The ignition filename will be concatenated with the Control Plane node
     # name and its 0-indexed serial number.
     # In this case, the first node will look for this filename:
@@ -103,13 +106,14 @@
     - vm_type == "zvm"
   register: create_master
   failed_when:
-    - create_master.failed == true
+    - create_master.failed is true
     - '"ValueError: dictionary update sequence element #0 has length 1; 2 is required" not in create_master | string'
 
 - name: 'Convert master flavor from value into number'
   ansible.builtin.command:
     cmd: "openstack flavor show {{ os_flavor_master }} -c disk -f value"
   register: master_flavor_size
+  changed_when: false
   when:
     - disk_type == "scsi"
 
@@ -120,7 +124,7 @@
     flavor: "{{ os_flavor_master }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     # The ignition filename will be concatenated with the Control Plane node
     # name and its 0-indexed serial number.
     # In this case, the first node will look for this filename:
@@ -132,7 +136,7 @@
       group: "{{ server_group_id }}"
     meta: "{{ cluster_id_tag }},custom_dns={{ os_dns_domain }}"
     boot_from_volume: true
-    volume_size: "{{ master_flavor_size.stdout_lines[0]}}"
+    volume_size: "{{ master_flavor_size.stdout_lines[0] }}"
     terminate_volume: true
   with_indexed_items: "{{ [os_cp_server_name] * os_control_nodes_number }}"
   environment:
@@ -143,7 +147,7 @@
     - volume_type_id is not defined
   register: create_master
   failed_when:
-    - create_master.failed == true
+    - create_master.failed is true
     - '"ValueError: dictionary update sequence element #0 has length 1; 2 is required" not in create_master | string'
 
 - name: Create control boot volume
@@ -151,18 +155,20 @@
     state: present
     name: "{{ item.1 }}-{{ item.0 }}-boot"
     image: "{{ image_name }}"
-    size: "{{ master_flavor_size.stdout_lines[0]}}"
+    size: "{{ master_flavor_size.stdout_lines[0] }}"
     volume_type: "{{ volume_type_id }}"
     metadata: "{{ cluster_id_tag }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
   with_indexed_items: "{{ [os_cp_server_name] * os_control_nodes_number }}"
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
 
 - name: 'Set control volume bootable'
-  ansible.builtin.shell: openstack --os-volume-api-version=3 volume set --bootable "{{ item.1 }}-{{ item.0 }}-boot"
+  ansible.builtin.command:
+    cmd: openstack --os-volume-api-version=3 volume set --bootable "{{ item.1 }}-{{ item.0 }}-boot"
   with_indexed_items: "{{ [os_cp_server_name] * os_control_nodes_number }}"
+  changed_when: false
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
@@ -174,7 +180,7 @@
     boot_volume: "{{ item.1 }}-{{ item.0 }}-boot"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     userdata: "{{ lookup('file', [item.1, item.0, 'ignition.json'] | join('-')) | string }}"
     nics:
       - port-name: "{{ os_port_master }}-{{ item.0 }}"

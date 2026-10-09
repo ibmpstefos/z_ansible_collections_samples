@@ -39,9 +39,10 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/common.yaml"
 
 - name: Get icic project name
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: openstack configuration show -c auth.project_name -f value
   register: icic_proj
+  changed_when: false
 
 - name: 'Get image name for ZVM'
   ansible.builtin.set_fact:
@@ -55,7 +56,7 @@
     image: "{{ image_name }}"
     flavor: "{{ os_flavor_bootstrap }}"
     userdata: "{{ lookup('file', os_bootstrap_ignition) | string }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
     nics:
@@ -69,9 +70,9 @@
   ansible.builtin.command:
     cmd: "openstack flavor show {{ os_flavor_bootstrap }} -c disk -f value"
   register: bootstrap_flavor_size
+  changed_when: false
   when:
     - disk_type == "scsi"
-
 
 - name: 'Create the bootstrap server with default boot volume'
   openstack.cloud.server:
@@ -79,14 +80,14 @@
     image: "{{ image_name }}"
     flavor: "{{ os_flavor_bootstrap }}"
     userdata: "{{ lookup('file', os_bootstrap_ignition) | string }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
     nics:
       - port-name: "{{ os_port_bootstrap }}"
     meta: "{{ cluster_id_tag }},custom_dns={{ os_dns_domain }}"
     boot_from_volume: true
-    volume_size: "{{ bootstrap_flavor_size.stdout_lines[0]}}"
+    volume_size: "{{ bootstrap_flavor_size.stdout_lines[0] }}"
     terminate_volume: true
   when:
     - disk_type == "scsi"
@@ -98,16 +99,18 @@
     state: present
     name: "{{ os_bootstrap_server_name }}-boot"
     image: "{{ image_name }}"
-    size: "{{ bootstrap_flavor_size.stdout_lines[0]}}"
+    size: "{{ bootstrap_flavor_size.stdout_lines[0] }}"
     volume_type: "{{ volume_type_id }}"
     metadata: "{{ cluster_id_tag }}"
-    timeout: "{{ create_server_timeout|int * 60 }} "
+    timeout: "{{ create_server_timeout | int * 60 }}"
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
 
 - name: 'Set bootstrap volume bootable'
-  ansible.builtin.shell: openstack --os-volume-api-version=3 volume set --bootable "{{ os_bootstrap_server_name }}-boot"
+  ansible.builtin.command:
+    cmd: openstack --os-volume-api-version=3 volume set --bootable "{{ os_bootstrap_server_name }}-boot"
+  changed_when: false
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
@@ -118,7 +121,7 @@
     flavor: "{{ os_flavor_bootstrap }}"
     boot_volume: "{{ os_bootstrap_server_name }}-boot"
     userdata: "{{ lookup('file', os_bootstrap_ignition) | string }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
     nics:
