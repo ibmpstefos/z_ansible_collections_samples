@@ -96,7 +96,8 @@
   ansible.builtin.command:
     cmd: >-
       openstack subnet set --allocation-pool
-      start={{ allocation_pool_start | default(subnet_range.stdout_lines[0] | next_nth_usable(10)) }},end={{ allocation_pool_end | default(os_subnet_range | ipaddr('last_usable')) }}
+      start={{ allocation_pool_start | default(subnet_range.stdout_lines[0] | next_nth_usable(10)) }},
+      end={{ allocation_pool_end | default(os_subnet_range | ipaddr('last_usable')) }}
       {{ use_network_subnet }}
   when:
     - (allocation_pool_start is not defined and allocation_pool_end is defined) or

@@ -20,10 +20,12 @@
 - name: Verify openshift minor version
   ansible.builtin.shell: |
     set -o pipefail
-    version=$(wget -q -O - https://mirror.openshift.com/pub/openshift-v4/s390x/dependencies/rhcos/{{ openshift_version }}/{{ openshift_version }}.{{ openshift_minor_version }}/sha256sum.txt | \
+    rhcos_base="https://mirror.openshift.com/pub/openshift-v4/s390x/dependencies/rhcos"
+    version=$(wget -q -O - \
+      "${rhcos_base}/{{ openshift_version }}/{{ openshift_version }}.{{ openshift_minor_version }}/sha256sum.txt" | \
       grep rhcos | wc -l)
     if [ $version -eq "0" ] || [ "{{ openshift_minor_version }}" -eq "latest" ]; then
-      echo $(wget -q -O - https://mirror.openshift.com/pub/openshift-v4/s390x/dependencies/rhcos/{{ openshift_version }}/latest/sha256sum.txt | \
+      echo $(wget -q -O - "${rhcos_base}/{{ openshift_version }}/latest/sha256sum.txt" | \
         grep -Eo "[0-9]+\.[0-9]+\.[0-9]+" | head -n1)
     else
       echo "{{ openshift_version }}.{{ openshift_minor_version }}"

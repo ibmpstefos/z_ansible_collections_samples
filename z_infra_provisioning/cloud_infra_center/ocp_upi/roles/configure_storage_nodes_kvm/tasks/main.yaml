@@ -39,15 +39,17 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/common.yaml"
 
 - name: Export infra ID
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: "jq -r .infraID metadata.json"
   register: infra_id
+  changed_when: false
 
 - name: Get icic project name
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: openstack configuration show -c auth.project_name -f value
   register: icic_proj
-  
+  changed_when: false
+
 - name: 'Get image name for kvm'
   ansible.builtin.set_fact:
     image_name: icic_rhcos_{{ vm_type }}_{{ disk_type }}_{{ openshift_version }}_{{ openshift_minor_version }}_{{ icic_proj.stdout }}
@@ -61,7 +63,7 @@
     flavor: "{{ os_flavor_storage }}"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     userdata: "{{ lookup('file', [item.1, item.0, 'ignition.json'] | join('-')) | string }}"
     nics:
       - port-name: "{{ os_port_storage }}-{{ item.0 }}"
@@ -85,17 +87,19 @@
     state: present
     name: "{{ item.1 }}-{{ item.0 }}-boot"
     image: "{{ image_name }}"
-    size: "{{ storage_flavor_size.stdout_lines[0]}}"
+    size: "{{ storage_flavor_size.stdout_lines[0] }}"
     volume_type: "{{ volume_type_id }}"
     metadata: "{{ cluster_id_tag }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
   with_indexed_items: "{{ [os_storage_server_name] * os_storage_nodes_number }}"
   when:
     - disk_type == "scsi"
     - volume_type_id is defined
 
 - name: 'Set storage volume bootable'
-  ansible.builtin.shell: openstack --os-volume-api-version=3 volume set --bootable "{{ item.1 }}-{{ item.0 }}-boot"
+  ansible.builtin.command:
+    cmd: openstack --os-volume-api-version=3 volume set --bootable "{{ item.1 }}-{{ item.0 }}-boot"
+  changed_when: false
   with_indexed_items: "{{ [os_storage_server_name] * os_storage_nodes_number }}"
   when:
     - disk_type == "scsi"
@@ -108,7 +112,7 @@
     boot_volume: "{{ item.1 }}-{{ item.0 }}-boot"
     auto_ip: false
     availability_zone: "{{ create_server_zone }}"
-    timeout: "{{ create_server_timeout|int * 60 }}"
+    timeout: "{{ create_server_timeout | int * 60 }}"
     userdata: "{{ lookup('file', [item.1, item.0, 'ignition.json'] | join('-')) | string }}"
     nics:
       - port-name: "{{ os_port_storage }}-{{ item.0 }}"
